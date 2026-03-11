@@ -1,13 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckCircle2, XCircle, Loader2, Circle } from 'lucide-react'
+import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 import { submitQuizAction } from '@/app/courses/[id]/[lessonId]/actions'
+
+type Option = { label: string, value: string }
 
 type Question = {
     id: string
     question: string
-    options: { label: string, value: string }[]
+    options: Option[] | string
     correct_answer?: string
 }
 
@@ -63,15 +65,22 @@ export default function QuizClient({
                 {questions.map((q, idx) => {
                     const feedback = results?.feedback[q.id]
                     const isCorrect = feedback?.isCorrect
-                    const hasSelected = answers[q.id] !== undefined
                     
+                    // Robustly handle stringified options from n8n/Supabase
+                    let optionsArray: Option[] = []
+                    try {
+                        optionsArray = typeof q.options === 'string' ? JSON.parse(q.options) : q.options || []
+                    } catch (e) {
+                        console.error('Failed to parse options for question:', q.id, e)
+                    }
+
                     return (
                         <div key={q.id}>
                             <p className="font-semibold text-[#0F1A2E] mb-4 text-lg">
                                 {idx + 1}. {q.question}
                             </p>
                             <div className="space-y-3">
-                                {q.options.map((opt) => {
+                                {optionsArray.map((opt) => {
                                     const isSelected = answers[q.id] === opt.value
                                     const isOptionCorrect = submitted && opt.value === feedback?.correctAnswer
                                     const isWrongSelection = submitted && isSelected && !isCorrect
@@ -130,7 +139,7 @@ export default function QuizClient({
                                                 <XCircle size={16} /> Incorrect
                                             </p>
                                             <p className="text-[#64748B] text-xs font-normal">
-                                                Correct answer: <span className="font-semibold">{q.options.find(o => o.value === feedback?.correctAnswer)?.label || feedback?.correctAnswer}</span>
+                                                Correct answer: <span className="font-semibold">{optionsArray.find(o => o.value === feedback?.correctAnswer)?.label || feedback?.correctAnswer}</span>
                                             </p>
                                         </div>
                                     )}
