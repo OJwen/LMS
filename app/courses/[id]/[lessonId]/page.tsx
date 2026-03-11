@@ -29,16 +29,27 @@ export default async function LessonPlayer({
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/login')
 
-    // Enrolment Guard
-    const { data: enrolment } = await supabase
-        .from('enrolments')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('course_id', courseId)
+    // Fetch User Profile to check for Admin role
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
         .single()
 
-    if (!enrolment) {
-        redirect(`/courses/${courseId}`)
+    const isAdmin = profile?.role === 'admin'
+
+    // Enrolment Guard (Admins bypass)
+    if (!isAdmin) {
+        const { data: enrolment } = await supabase
+            .from('enrolments')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('course_id', courseId)
+            .single()
+
+        if (!enrolment) {
+            redirect(`/courses/${courseId}`)
+        }
     }
 
     // Fetch Course Structure for Sidebar & Navigation
