@@ -107,9 +107,16 @@ export async function submitQuizAction(courseId: string, lessonId: string, userA
     if (!questions) return { error: 'Quiz not found' }
 
     let correctCount = 0
+    const feedback: Record<string, { isCorrect: boolean, correctAnswer: string }> = {}
+
     questions.forEach(q => {
-        if (userAnswers[q.id] === q.correct_answer) {
+        const isCorrect = userAnswers[q.id] === q.correct_answer
+        if (isCorrect) {
             correctCount++
+        }
+        feedback[q.id] = {
+            isCorrect,
+            correctAnswer: q.correct_answer
         }
     })
 
@@ -118,7 +125,7 @@ export async function submitQuizAction(courseId: string, lessonId: string, userA
         score = Math.round((correctCount / questions.length) * 100)
     }
 
-    const passed = score >= 80 // 80% to pass
+    const passed = score >= 70 // 70% to pass
 
     // Record attempt
     await supabase
@@ -135,5 +142,5 @@ export async function submitQuizAction(courseId: string, lessonId: string, userA
         await markLessonComplete(courseId, lessonId)
     }
 
-    return { success: true, score, passed }
+    return { success: true, score, passed, feedback }
 }

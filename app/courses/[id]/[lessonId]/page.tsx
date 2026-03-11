@@ -95,17 +95,13 @@ export default async function LessonPlayer({
 
     if (!lesson) redirect(`/courses/${courseId}`)
 
-    // Specific queries per type
-    let quizQuestions = null
-    if (lesson.content_type === 'quiz') {
-        const { data } = await supabase
-            .from('quiz_questions')
-            .select('id, question, options, position')
-            .eq('lesson_id', lessonId)
-            .order('position', { ascending: true })
 
-        quizQuestions = data
-    }
+    // Fetch Quiz Questions if they exist for this lesson
+    const { data: quizQuestions } = await supabase
+        .from('quiz_questions')
+        .select('*')
+        .eq('lesson_id', lessonId)
+        .order('position', { ascending: true })
 
     // Helper to extract YouTube ID from string
     const getYoutubeEmbed = (url: string) => {
@@ -222,14 +218,6 @@ export default async function LessonPlayer({
                             </div>
                         )}
 
-                        {/* TYPE: QUIZ */}
-                        {lesson.content_type === 'quiz' && quizQuestions && (
-                            <QuizClient
-                                courseId={courseId}
-                                lessonId={lessonId}
-                                questions={quizQuestions}
-                            />
-                        )}
 
                         {/* Fallback for unconfigured videos/content */}
                         {lesson.content_type === 'video' && !lesson.content_url && (
@@ -238,6 +226,17 @@ export default async function LessonPlayer({
                             </div>
                         )}
                     </div>
+
+                    {/* ALWAYS SHOW QUIZ AT BOTTOM IF QUESTIONS EXIST */}
+                    {quizQuestions && quizQuestions.length > 0 && (
+                        <div className="mb-12">
+                            <QuizClient
+                                courseId={courseId}
+                                lessonId={lessonId}
+                                questions={quizQuestions}
+                            />
+                        </div>
+                    )}
 
                     {/* Bottom Actions Row */}
                     <div className="flex flex-col md:flex-row items-center justify-between border-t border-border pt-8 mt-12 gap-6">
@@ -256,18 +255,18 @@ export default async function LessonPlayer({
                         </div>
 
                         <div className="w-full md:w-auto flex justify-center order-first md:order-none">
-                            {/* Only show strictly on Non-Quiz. Quiz manages its own completion. */}
-                            {lesson.content_type !== 'quiz' && (
+                            {/* Only show Mark as Complete if no quiz exists, OR if quiz passed */}
+                            {(!quizQuestions || quizQuestions.length === 0) && (
                                 <MarkCompleteButton
                                     courseId={courseId}
                                     lessonId={lessonId}
                                     isCompleted={currentLessonMeta.isCompleted}
                                 />
                             )}
-                            {lesson.content_type === 'quiz' && currentLessonMeta.isCompleted && (
+                            {quizQuestions && quizQuestions.length > 0 && currentLessonMeta.isCompleted && (
                                 <div className="flex items-center justify-center gap-2 px-6 py-3 bg-emerald-50 text-emerald-700 font-semibold rounded-full border border-emerald-200 w-full md:w-auto">
                                     <CheckCircle className="w-5 h-5 text-emerald-500" />
-                                    Quiz Passed & Complete
+                                    Lesson & Quiz Complete
                                 </div>
                             )}
                         </div>
